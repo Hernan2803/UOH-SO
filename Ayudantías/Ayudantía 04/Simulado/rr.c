@@ -5,6 +5,8 @@
 #define MAX_PROCESOS 10
 #define QUANTUM 4 //ms
 
+nSem sem;
+
 // Estructura para almacenar información del proceso
 typedef struct {
     int id;          // Identificador del proceso
@@ -20,6 +22,7 @@ bool ejecutar_proceso(proceso *p) {
     if (p->tiempo_cpu > QUANTUM) {
         nPrintf("Ejecutando proceso %d por %d unidades de tiempo\n", p->id, QUANTUM);
         p->tiempo_cpu -= QUANTUM;
+        nSleep(2);
         return false;   // El proceso no terminó
     } else {
         nPrintf("Ejecutando proceso %d por %d unidades de tiempo (terminado)\n", p->id, p->tiempo_cpu);
@@ -29,24 +32,25 @@ bool ejecutar_proceso(proceso *p) {
 }
 
 // Función que se ejecuta en el hilo para ejecutar un proceso
-void *ejecutar_proceso_hilo(void *arg) {
+int ejecutar_proceso_hilo(void *arg) {
     proceso *p = (proceso *)arg;
     while (p->tiempo_cpu > 0) {
         bool terminado = ejecutar_proceso(p);
-        START_CRITICAL();
+        nWaitSem(sem);
         tiempo_total += QUANTUM;
         if (terminado) {
             nPrintf("Proceso %d terminado en tiempo %d\n", p->id, tiempo_total);
         }
-        END_CRITICAL();
-        ResumeNextReadyTask();  // Ceder la CPU al siguiente hilo
+        nSignalSem(sem);
     }
-    return NULL;
+    return 0;
 }
 
-int main() {
+int nMain() {
     int n_procesos;
     proceso procesos[MAX_PROCESOS];
+    nSetTimeSlice(QUANTUM);
+    sem = nMakeSem(1);
 
     nPrintf("Ingrese el número de procesos (máximo %d): ", MAX_PROCESOS);
     scanf("%d", &n_procesos);
@@ -59,14 +63,14 @@ int main() {
     }
 
     // Crear un hilo para cada proceso y ejecutarlos en paralelo
-    pthread_t hilos[MAX_PROCESOS];
+    nTask hilos[MAX_PROCESOS];
     for (int i = 0; i < n_procesos; i++) {
         hilos[i] = nEmitTask(ejecutar_proceso_hilo, &procesos[i]);
     }
 
     // Esperar a que terminen todos los hilos
     for (int i = 0; i < n_procesos; i++) {
-        nWaitTask(hilos[i])
+        nWaitTask(hilos[i]);
     }
 
     nPrintf("Todos los procesos terminados en tiempo total %d\n", tiempo_total);
