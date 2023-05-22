@@ -8,29 +8,61 @@ Funcionamiento de nExchange(nTask task, int val)
     val -> valor que desean intercambiar
 
 */
-#define Pending 1
+#define READY 0             // estado para tareas listas para continuar su ejecucion
+#define Pending 1           // estado para tareas con nExchange pendiente
+#define nExchangeState 2    // estado para tareas que llaman a nExchange
 
-Queue list_wait = MakeQueue();
+typedef struct Task{
+    int status;
+    int rc;
+    ...
+} *nTask
+
+Queue list_wait = MakeQueue(); // lista para guardar los pid de las tareas que estan pendientes
+Queue list_wait_change = MakeQueue(); // lista para guardar los pid de las tareas con las que se quieren hacer los cambios (las de list_wait)
 
 int nExchange(nTask task, int val){
+    nTask this_task = currentTask;  // obtengo el pid de la tarea en ejecucion
+    this_task.status = Pending;     // cambio su estado a pendiente
+    
     START_CRITICAL();
-    nTask this_task = currentTask;
-    this_task.status = Pending;
+    PutTask(list_wait, this_task);  // agrego la tarea a la lista de tareas pendientes
+    PutTask(list_wait_change, task);// agrego la tarea con la que quiere cambiar
 
-    while(task.status != Pending){
+    while(task.status != Pending){  // verificar en seccion critica
         END_CRITICAL();
+        // dar un espacio para que los demas puedan tomar la seccion critica
+        // se queda en bucle hasta que la otra este en estado "Pending"
         START_CRITICAL();
     }
-    
-    PutTask(list_wait, this_task);
-    END_CRITICAL();
-}
 
-int nMain(){
-    nTask tasks[2];
-    tasks[0] = nEmitTask(nExchange, tasks[1], 3);
-    tasks[1] = nEmitTask(nExchange, tasks[0], 5);
+    while(1){
+        // revisar si el cambio de task es con esta tarea u otra
+        nTask taskAux = GetTask(list_wait); // obtengo el pid de la primera tarea en list_wait
+        while (taskAux != task){    // si no es el pid que se busca, ponerlo al final y pedir el siguiente
+            PutTask(list_wait, taskAux);
+            PutTask(list_wait_change, GetTask(list_wait_change));   
+            taskAux = GetTask(list_wait);
+        }
+        
+        // verificacion de que el cambio es con esta tarea (this_task)
+        nTask taskAuxChange = GetTask(list_wait_change);
+        if (taskAuxChange != this_task){    // si no lo es poner task y taskAuxChange al final de sus queue (respectivamente)
+            PutTask(list_wait, taskAux);
+            PutTask(list_wait_change, taskAuxChange);   
+            END_CRITICAL();
+            // esperar a que el estado de task ya no sea "Pending" y que despues lo vuelva a ser, esto para asegurarnos que realizo el intercambio que tenia pendiente y ahora debe realizar otro, ojo todavia no sabemos si es con esta tarea, por eso la ejecucion esta dentro de un while(True)
 
-    nPrintf("Tarea 0: %d", nWaitTask(tasks[0]));
-    nPrintf("Tarea 1: %d", nWaitTask(tasks[1]));
+            START_CRITICAL();
+            continue;
+        }
+        else{
+            // realizar intercambio
+
+            // cambiar estados
+
+            break;
+        }
+        END_CRITICAL();
+    }
 }
