@@ -15,7 +15,6 @@ Funcionamiento de nExchange(nTask task, int val)
 typedef struct Task{
     int status;
     int rc;
-    ...
 } *nTask
 
 Queue list_wait = MakeQueue(); // lista para guardar los pid de las tareas que estan pendientes
@@ -23,13 +22,13 @@ Queue list_wait_change = MakeQueue(); // lista para guardar los pid de las tarea
 
 int nExchange(nTask task, int val){
     nTask this_task = currentTask;  // obtengo el pid de la tarea en ejecucion
-    this_task.status = Pending;     // cambio su estado a pendiente
+    this_task->status = Pending;     // cambio su estado a pendiente
     
     START_CRITICAL();
     PutTask(list_wait, this_task);  // agrego la tarea a la lista de tareas pendientes
     PutTask(list_wait_change, task);// agrego la tarea con la que quiere cambiar
 
-    while(task.status != Pending){  // verificar en seccion critica
+    while(task->status != Pending){  // verificar en seccion critica
         END_CRITICAL();
         // dar un espacio para que los demas puedan tomar la seccion critica
         // se queda en bucle hasta que la otra este en estado "Pending"
@@ -52,17 +51,18 @@ int nExchange(nTask task, int val){
             PutTask(list_wait_change, taskAuxChange);   
             END_CRITICAL();
             // esperar a que el estado de task ya no sea "Pending" y que despues lo vuelva a ser, esto para asegurarnos que realizo el intercambio que tenia pendiente y ahora debe realizar otro, ojo todavia no sabemos si es con esta tarea, por eso la ejecucion esta dentro de un while(True)
-
+            while(task->status == Pending){continue;}
+            while(task->status != Pending){continue;}
             START_CRITICAL();
-            continue;
         }
         else{
+            END_CRITICAL();
             // realizar intercambio
-
+            task->rc = val; // mandamos val a task, en la ejecucion de task se nos deberia mandar su valor
             // cambiar estados
-
-            break;
+            task->status = READY; // mandamos el estado de task
+            break; //salir del bucle while
         }
-        END_CRITICAL();
+        
     }
 }
