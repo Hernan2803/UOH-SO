@@ -4,42 +4,53 @@ Del enunciado:
 - no existen herramientas de sincronización mas avanzadas que los spin-locks
 - el buffer solo puede almacenar hasta 20 elementos
 */
+
 #define BUFFER_SIZE 20
 
-typedef struct {
-  int i;
-} Item;
+int ult=0, prim=0, count=0;
+Item buf[BUFFER_SIZE];
 
-typedef struct {
-    Item buffer[BUFFER_SIZE];
-    int ult;
-    int prim;
-    int count;
-} Buffer;
-
-Buffer buffer;
+/*
+void put(Item it){
+    nWaitSem(vacios);
+    buf[ult] =it;
+    ult= (ult+1)%20;
+    nSignalSem(llenos);
+}
+*/
 
 void put(Item it){
   spinLock(&lock);
-  while (buffer.count==BUFFER_SIZE){
+  while(count==BUFFER_SIZE){
     spinUnlock(&lock);
     spinLock(&lock);
   }
-  buffer.buffer[buffer.ult] = it;
-  buffer.ult = (buffer.ult+1)%BUFFER_SIZE;
-  buffer.count++;
+  buf[ult] = it;
+  ult = (ult+1)%BUFFER_SIZE;
+  count++;
   spinUnlock(&lock);
 }
 
-void get(){
+/*
+Item get(){
+    Item it;
+    nWaitSem(llenos);
+    it = buf[prim];
+    prim= (prim+1)%20;
+    nsignalSem(vacios);
+    return it;
+}
+*/
+Item get(){
   Item it;
   spinLock(&lock);
-  while ((buffer.ult - buffer.prim)<0){
+  while(count==0){
     spinUnlock(&lock);
     spinLock(&lock);
   }
-  it = buffer.buffer[buffer.prim];
-  buffer.prim = (buffer.prim+1)%BUFFER_SIZE;
-  buffer.count--;
+  it = buf[prim];
+  prim = (prim+1)%BUFFER_SIZE;
+  count--;
   spinUnlock(&lock);
+  return it;
 }

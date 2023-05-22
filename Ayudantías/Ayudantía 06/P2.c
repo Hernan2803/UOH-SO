@@ -8,47 +8,29 @@ Funcionamiento de nExchange(nTask task, int val)
     val -> valor que desean intercambiar
 
 */
-//#include "nSystem.h"
+#define Pending 1
 
-#define READY 1
-#define PROCESS_nExchange 2
-#define WAIT_nExchange 3
-#define PENDING_nExchange 4
-
+Queue list_wait = MakeQueue();
 
 int nExchange(nTask task, int val){
-  int rc;
-  nTask this_task = current_task;
-
-  if (this_task.status == READY){
-    this_task.status = PROCESS_nExchange;
-  }
-
-  while(this_task.status != READY){
     START_CRITICAL();
-    //revisa si tiene un cambio pendiente
-    if (this_task.status == PENDING_nExchange) {
-      task.rc = val;
-      task.status = READY;
-    }
-    else{
-      this_task.status = WAIT_nExchange;
-    }
+    nTask this_task = currentTask;
+    this_task.status = Pending;
 
-    //se queda esperando a que el otro este dispuesto a hacer un cambio
-    if (task.status == WAIT_nExchange){
-      task.rc = val;
-
-      //cambiar estado de las tareas
-      task.status == PENDING_nExchange;
-      this_task.status = READY;
+    while(task.status != Pending){
+        END_CRITICAL();
+        START_CRITICAL();
     }
     
-    if ((this_task.status == READY) && (task.status == READY)){
-      PutTask(ready_queue, this_task);
-      PutTask(ready_queue, task);
-    }
+    PutTask(list_wait, this_task);
     END_CRITICAL();
-  }
-  
+}
+
+int nMain(){
+    nTask tasks[2];
+    tasks[0] = nEmitTask(nExchange, tasks[1], 3);
+    tasks[1] = nEmitTask(nExchange, tasks[0], 5);
+
+    nPrintf("Tarea 0: %d", nWaitTask(tasks[0]));
+    nPrintf("Tarea 1: %d", nWaitTask(tasks[1]));
 }
