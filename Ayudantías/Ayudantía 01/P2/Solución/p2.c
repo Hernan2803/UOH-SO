@@ -2,14 +2,14 @@
 #include <stdlib.h>
 #include "nSystem.h"
 
-#define N 2
-#define MAX_BUFFER_SIZE 5
-#define MAX_PRODUCED_ITEMS 40
+#define N 4
+#define MAX_BUFFER_SIZE 10
+#define MAX_PRODUCED_ITEMS 100
 
 int i;
 int n_ent = 0;
 nSem space;
-nSem pedido;
+nSem pizza;
 
 void cocinar(){
   nPrintf("Cocinando\n");
@@ -17,51 +17,44 @@ void cocinar(){
 }
 
 void repartiendo(int ent){
-  nPrintf("Repartiendo pedido %d\n", ent);
-  nSleep(rand() % 10);
+  nPrintf("%d repartiendo\n", ent);
+  nSleep(rand() % 7);
 }
 
 int cocinero(void* arg) {
   for (i = 0; i<MAX_PRODUCED_ITEMS; i++){
     cocinar();
     nWaitSem(space);
-    nSignalSem(pedido);
-    nPrintf("Cocinado %d\n", i);
+    nSignalSem(pizza);
   }
-
+  
   nExitTask(0);
   return 0;
 }
 
-int repartir(void* arg){
-  while(TRUE){ //n_ent < MAX_PRODUCED_ITEMS){
-    nWaitSem(pedido);
+int repartidor(void* arg){
+  while(TRUE){
+    nWaitSem(pizza);
     int local_ent = n_ent;
     n_ent ++;
     nSignalSem(space);
     repartiendo(local_ent);
-    nPrintf("Pedido %d entregado\n", local_ent);
+    nPrintf("%d entregado\n", local_ent);
   }
-
   nExitTask(0);
   return 0;
 }
 
 int nMain() {
   space = nMakeSem(MAX_BUFFER_SIZE);
-  pedido = nMakeSem(0);
+  pizza = nMakeSem(0);
 
   nTask cocina = nEmitTask(cocinero);
-
-  nTask mesero[N];
+  nTask repartidores[N];
   for (int j = 0; j < N; j++) {
-    mesero[j] = nEmitTask(repartir);
+    repartidores[j] = nEmitTask(repartidor);
   }
   nWaitTask(cocina);
-  for (int j = 0; j < N; j++) {
-    nPrintf("%d", j);
-    nWaitTask(mesero[j]);
-  }
 
   return 0;
 }

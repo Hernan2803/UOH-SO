@@ -4,12 +4,12 @@ CFLAGS= -g -Wall -pedantic -std=c99 -I$(NSYSTEM)/include -I$(NSYSTEM)/src
 LFLAGS= -g
 LDLIBS= $(LIBNSYS) -pthread
 
-all: p1
+all: max
 
-p1: $(NSYSTEM)/include/nSystem.h $(NSYSTEM)/include/fifoqueues.h $(LIBNSYS)
+max: $(NSYSTEM)/include/nSystem.h $(NSYSTEM)/include/fifoqueues.h $(LIBNSYS)
 
 clean:
 	rm -f *.o *~
 
 cleanall:
-	rm -f *.o *~ p1
+	rm -f *.o *~ max
