@@ -1,0 +1,2 @@
+gcc -o locks_semaphore locks_semaphore.c -pthread
+./locks_semaphore
